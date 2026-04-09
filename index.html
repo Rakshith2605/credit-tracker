@@ -771,18 +771,124 @@
             opacity: 1;
             transform: translateY(0)
         }
+
+        /* ── AUTH OVERLAY ── */
+        #auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity .3s
+        }
+
+        .auth-card {
+            background: var(--surf);
+            border: 1px solid var(--brd2);
+            border-radius: 14px;
+            padding: 2.75rem 2.5rem 2rem;
+            max-width: 380px;
+            width: 90%;
+            text-align: center
+        }
+
+        .auth-logo {
+            font-family: var(--disp);
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: .4rem
+        }
+
+        .auth-logo span {
+            color: var(--acc)
+        }
+
+        .auth-tagline {
+            font-family: var(--mono);
+            font-size: .65rem;
+            color: var(--mut);
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            margin-bottom: 2.25rem
+        }
+
+        #auth-g-btn {
+            display: flex;
+            justify-content: center;
+            min-height: 44px;
+            margin-bottom: .25rem
+        }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 1.1rem 0;
+            font-family: var(--mono);
+            font-size: .62rem;
+            color: var(--mut)
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--brd)
+        }
+
+        .auth-guest-btn {
+            width: 100%;
+            padding: 11px;
+            background: transparent;
+            border: 1px solid var(--brd2);
+            color: var(--txt);
+            font-family: var(--mono);
+            font-size: .75rem;
+            letter-spacing: .1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color .2s, color .2s;
+            margin-bottom: 1.75rem
+        }
+
+        .auth-guest-btn:hover {
+            border-color: var(--acc);
+            color: var(--acc)
+        }
+
+        .auth-note {
+            font-family: var(--mono);
+            font-size: .6rem;
+            color: var(--mut);
+            line-height: 1.8
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- Auth overlay — shown on first visit and after sign-out -->
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-logo">CREDIT<span>.</span>TRACKER</div>
+            <p class="auth-tagline">Loan Projection &amp; Payment Tracker</p>
+            <div id="auth-g-btn"></div>
+            <div class="auth-divider"><span>or</span></div>
+            <button class="auth-guest-btn" onclick="signInAsGuest()">CONTINUE AS GUEST</button>
+            <p class="auth-note">Your data is stored only in this browser.<br>Nothing is sent to any server.</p>
+        </div>
+    </div>
 
     <header>
         <div class="logo">CREDIT<span>.</span>TRACKER</div>
         <div style="display:flex;align-items:center;gap:12px">
             <div class="live-badge"><span class="ldot"></span>LIVE FX</div>
             <div class="hmeta" id="last-updated">—</div>
-            <!-- Google sign-in button (shown when logged out) -->
-            <div id="g-btn-wrap"></div>
             <!-- User chip (shown when logged in) -->
             <div id="user-chip-wrap" style="display:none">
                 <div class="user-chip" title="Click to sign out" onclick="signOut()">
@@ -1016,24 +1122,13 @@
         const pc = () => $('sel-pmt').value;
         const same = () => lc() === pc();
 
-        // ─── COOKIE HELPERS ───────────────────────────
-        function setCookie(name, value, days = 365) {
-            const exp = new Date(Date.now() + days * 864e5).toUTCString();
-            document.cookie = `${name}=${encodeURIComponent(value)};expires=${exp};path=/;SameSite=Strict`;
-        }
-        function getCookie(name) {
-            const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
-            return m ? decodeURIComponent(m[1]) : null;
-        }
-        function deleteCookie(name) {
-            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        }
-
+        // ─── LOCAL STORAGE PREFS ──────────────────────
         function prefKey() {
             return currentUser ? `loanproj_prefs_${currentUser.sub}` : 'loanproj_prefs_guest';
         }
 
         function savePrefs() {
+            if (!currentUser) return;
             const prefs = {
                 loanCur: $('sel-loan').value,
                 pmtCur: $('sel-pmt').value,
@@ -1043,14 +1138,13 @@
                 fx: $('fx-input').value,
                 pmtAmt: $('pmt-slider').value,
             };
-            setCookie(prefKey(), JSON.stringify(prefs), 365);
-            showToast(currentUser ? `Saved for ${currentUser.name.split(' ')[0]}` : 'Preferences saved');
+            try { localStorage.setItem(prefKey(), JSON.stringify(prefs)); } catch {}
         }
 
         function loadPrefs() {
-            const raw = getCookie(prefKey());
-            if (!raw) return false;
             try {
+                const raw = localStorage.getItem(prefKey());
+                if (!raw) return false;
                 const p = JSON.parse(raw);
                 if (p.loanCur) { $('sel-loan').value = p.loanCur; }
                 if (p.pmtCur) { $('sel-pmt').value = p.pmtCur; }
@@ -1072,34 +1166,30 @@
             toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
         }
 
-        // ─── GOOGLE AUTH ──────────────────────────────
+        // ─── AUTH ─────────────────────────────────────
         function initGoogleAuth() {
             if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
                 $('setup-banner').style.display = 'block';
+                $('auth-g-btn').style.display = 'none';
                 return;
             }
             if (typeof google === 'undefined') { setTimeout(initGoogleAuth, 300); return; }
             google.accounts.id.initialize({
                 client_id: GOOGLE_CLIENT_ID,
                 callback: handleCredential,
-                auto_select: true,
+                auto_select: false,
             });
-            google.accounts.id.renderButton($('g-btn-wrap'), {
-                theme: 'outline', size: 'medium', shape: 'pill', type: 'standard',
+            google.accounts.id.renderButton($('auth-g-btn'), {
+                theme: 'outline', size: 'large', shape: 'pill', type: 'standard', width: 280,
             });
-            // restore session from cookie
-            const saved = getCookie('loanproj_user');
-            if (saved) {
-                try { currentUser = JSON.parse(saved); updateUserChip(); loadPrefs(); updateUI(); fetchFX(false); }
-                catch { }
-            }
         }
 
         function handleCredential(resp) {
             try {
                 const payload = JSON.parse(atob(resp.credential.split('.')[1]));
                 currentUser = { name: payload.name, email: payload.email, picture: payload.picture || '', sub: payload.sub };
-                setCookie('loanproj_user', JSON.stringify(currentUser), 30);
+                localStorage.setItem('loanproj_user', JSON.stringify(currentUser));
+                hideOverlay();
                 updateUserChip();
                 const hadPrefs = loadPrefs();
                 updateUI();
@@ -1108,17 +1198,39 @@
             } catch (e) { console.error('Auth error', e); }
         }
 
+        function signInAsGuest() {
+            currentUser = { name: 'Guest', email: '', picture: '', sub: 'guest' };
+            localStorage.setItem('loanproj_user', JSON.stringify(currentUser));
+            hideOverlay();
+            updateUserChip();
+            loadPrefs();
+            updateUI();
+            if (!same()) fetchFX(false); else compute();
+        }
+
+        function hideOverlay() {
+            const o = $('auth-overlay');
+            o.style.opacity = '0';
+            setTimeout(() => { o.style.display = 'none'; }, 300);
+        }
+
+        function showOverlay() {
+            const o = $('auth-overlay');
+            o.style.display = 'flex';
+            o.style.opacity = '0';
+            requestAnimationFrame(() => { o.style.opacity = '1'; });
+        }
+
         function signOut() {
             if (typeof google !== 'undefined') google.accounts.id.disableAutoSelect();
-            deleteCookie('loanproj_user');
+            localStorage.removeItem('loanproj_user');
             currentUser = null;
             updateUserChip();
-            showToast('Signed out');
+            showOverlay();
         }
 
         function updateUserChip() {
             const loggedIn = !!currentUser;
-            $('g-btn-wrap').style.display = loggedIn ? 'none' : 'flex';
             $('user-chip-wrap').style.display = loggedIn ? 'flex' : 'none';
             if (!loggedIn) return;
             $('user-name-el').textContent = currentUser.name;
@@ -1126,7 +1238,7 @@
             if (currentUser.picture) {
                 av.outerHTML = `<img id="user-avatar-el" class="user-avatar" src="${currentUser.picture}" referrerpolicy="no-referrer" alt="">`;
             } else {
-                av.textContent = currentUser.name.slice(0, 2).toUpperCase();
+                av.textContent = currentUser.sub === 'guest' ? 'G' : currentUser.name.slice(0, 2).toUpperCase();
             }
         }
 
@@ -1451,15 +1563,20 @@
         // ─── INIT ─────────────────────────────────────
         $('footer-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
-        // load guest prefs first (overridden by user prefs after sign-in)
-        const hadGuestPrefs = loadPrefs();
-        updateUI();
+        // Restore existing session from localStorage
+        const savedSession = localStorage.getItem('loanproj_user');
+        if (savedSession) {
+            try {
+                currentUser = JSON.parse(savedSession);
+                $('auth-overlay').style.display = 'none';
+                updateUserChip();
+                loadPrefs();
+                updateUI();
+                (async () => { if (!same()) await fetchFX(false); else compute(); })();
+            } catch { currentUser = null; }
+        }
 
-        (async () => {
-            if (!same()) await fetchFX(false); else compute();
-        })();
-
-        // init Google Auth after DOM ready
+        // Init Google Auth (renders button inside the overlay)
         setTimeout(initGoogleAuth, 100);
     </script>
 </body>
