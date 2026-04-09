@@ -1184,6 +1184,16 @@
             });
         }
 
+        function resetFields() {
+            $('sel-loan').value = 'INR';
+            $('sel-pmt').value = 'USD';
+            $('inp-principal').value = '0';
+            $('inp-rate').value = '0';
+            $('inp-date').value = '';
+            $('fx-input').value = '1.0000';
+            $('pmt-slider').value = '0';
+        }
+
         function handleCredential(resp) {
             try {
                 const payload = JSON.parse(atob(resp.credential.split('.')[1]));
@@ -1191,6 +1201,7 @@
                 localStorage.setItem('loanproj_user', JSON.stringify(currentUser));
                 hideOverlay();
                 updateUserChip();
+                resetFields();
                 const hadPrefs = loadPrefs();
                 updateUI();
                 if (!same()) fetchFX(false); else compute();
@@ -1203,6 +1214,7 @@
             localStorage.setItem('loanproj_user', JSON.stringify(currentUser));
             hideOverlay();
             updateUserChip();
+            resetFields();
             loadPrefs();
             updateUI();
             if (!same()) fetchFX(false); else compute();
@@ -1570,6 +1582,7 @@
                 currentUser = JSON.parse(savedSession);
                 $('auth-overlay').style.display = 'none';
                 updateUserChip();
+                resetFields();
                 loadPrefs();
                 updateUI();
                 (async () => { if (!same()) await fetchFX(false); else compute(); })();
