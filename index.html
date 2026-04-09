@@ -204,6 +204,37 @@
             border-color: var(--acc)
         }
 
+        .cur-mo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 5px
+        }
+
+        .cur-mo-wrap input[type="checkbox"] {
+            width: 11px;
+            height: 11px;
+            accent-color: var(--acc);
+            cursor: pointer;
+            border: none;
+            border-bottom: none;
+            flex-shrink: 0
+        }
+
+        .cur-mo-lbl {
+            font-family: var(--mono);
+            font-size: .58rem;
+            color: var(--mut);
+            cursor: pointer;
+            letter-spacing: .05em;
+            display: inline;
+            margin-bottom: 0
+        }
+
+        #inp-date:disabled {
+            color: var(--mut2);
+            opacity: .7
+        }
+
         .iunit {
             position: absolute;
             right: 1.4rem;
@@ -953,7 +984,13 @@
                 <span class="iunit">% p.a.</span>
             </div>
             <div class="icell">
-                <label>Start date</label>
+                <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+                    Start date
+                    <span class="cur-mo-wrap">
+                        <input type="checkbox" id="chk-curmo" onchange="toggleCurMonth()">
+                        <label for="chk-curmo" class="cur-mo-lbl">current month</label>
+                    </span>
+                </label>
                 <input type="text" id="inp-date" value="" placeholder="MMM YYYY">
                 <span class="iunit">MMM YYYY</span>
             </div>
@@ -1184,12 +1221,29 @@
             });
         }
 
+        function curMonthStr() {
+            return new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        }
+
+        function toggleCurMonth() {
+            const chk = $('chk-curmo'), inp = $('inp-date');
+            if (chk.checked) {
+                inp.value = curMonthStr();
+                inp.disabled = true;
+            } else {
+                inp.disabled = false;
+            }
+            compute();
+        }
+
         function resetFields() {
+            $('chk-curmo').checked = false;
             $('sel-loan').value = 'INR';
             $('sel-pmt').value = 'USD';
             $('inp-principal').value = '0';
             $('inp-rate').value = '0';
             $('inp-date').value = '';
+            $('inp-date').disabled = false;
             $('fx-input').value = '1.0000';
             $('pmt-slider').value = '0';
         }
