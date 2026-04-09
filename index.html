@@ -158,7 +158,7 @@
             background: var(--surf2)
         }
 
-        .icell label {
+        .icell > label, .icell-lbl {
             display: block;
             font-family: var(--mono);
             font-size: .62rem;
@@ -168,7 +168,7 @@
             margin-bottom: 7px
         }
 
-        .icell input,
+        .icell input:not([type="checkbox"]),
         .icell select {
             width: 100%;
             background: transparent;
@@ -199,40 +199,52 @@
             color: var(--txt)
         }
 
-        .icell input:focus,
+        .icell input:not([type="checkbox"]):focus,
         .icell select:focus {
             border-color: var(--acc)
         }
 
-        .cur-mo-wrap {
+        .icell-lbl-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 7px
+        }
+
+        .chk-wrap {
             display: flex;
             align-items: center;
             gap: 5px
         }
 
-        .cur-mo-wrap input[type="checkbox"] {
+        .chk-wrap input[type="checkbox"] {
             width: 11px;
             height: 11px;
             accent-color: var(--acc);
             cursor: pointer;
-            border: none;
-            border-bottom: none;
-            flex-shrink: 0
+            flex-shrink: 0;
+            margin: 0
         }
 
-        .cur-mo-lbl {
+        .chk-lbl {
             font-family: var(--mono);
             font-size: .58rem;
             color: var(--mut);
             cursor: pointer;
             letter-spacing: .05em;
-            display: inline;
-            margin-bottom: 0
+            text-transform: uppercase
         }
 
         #inp-date:disabled {
             color: var(--mut2);
             opacity: .7
+        }
+
+        .same-cur-wrap {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 8px
         }
 
         .iunit {
@@ -984,13 +996,13 @@
                 <span class="iunit">% p.a.</span>
             </div>
             <div class="icell">
-                <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-                    Start date
-                    <span class="cur-mo-wrap">
+                <div class="icell-lbl-row">
+                    <span class="icell-lbl">Start date</span>
+                    <span class="chk-wrap">
                         <input type="checkbox" id="chk-curmo" onchange="toggleCurMonth()">
-                        <label for="chk-curmo" class="cur-mo-lbl">current month</label>
+                        <label for="chk-curmo" class="chk-lbl">current month</label>
                     </span>
-                </label>
+                </div>
                 <input type="text" id="inp-date" value="" placeholder="MMM YYYY">
                 <span class="iunit">MMM YYYY</span>
             </div>
@@ -1017,6 +1029,10 @@
                 <option value="PHP">PHP</option>
                 <option value="IDR">IDR</option>
             </select>
+            <span class="chk-wrap same-cur-wrap">
+                <input type="checkbox" id="chk-samecur" onchange="toggleSameCur()">
+                <label for="chk-samecur" class="chk-lbl">same as loan</label>
+            </span>
             <span style="color:var(--mut);font-family:var(--mono);font-size:.8rem;margin:0 6px">→</span>
             <span id="fx-pair"
                 style="font-family:var(--mono);font-size:.78rem;color:var(--acc);letter-spacing:.05em;min-width:70px">USD/INR</span>
@@ -1236,10 +1252,23 @@
             compute();
         }
 
+        function toggleSameCur() {
+            const chk = $('chk-samecur'), sel = $('sel-pmt');
+            if (chk.checked) {
+                sel.value = lc();
+                sel.disabled = true;
+            } else {
+                sel.disabled = false;
+            }
+            onCurrencyChange();
+        }
+
         function resetFields() {
             $('chk-curmo').checked = false;
+            $('chk-samecur').checked = false;
             $('sel-loan').value = 'INR';
             $('sel-pmt').value = 'USD';
+            $('sel-pmt').disabled = false;
             $('inp-principal').value = '0';
             $('inp-rate').value = '0';
             $('inp-date').value = '';
@@ -1621,7 +1650,10 @@
         }
 
         // ─── CURRENCY CHANGE ──────────────────────────
-        function onCurrencyChange() { updateUI(); if (!same()) fetchFX(); else compute(); }
+        function onCurrencyChange() {
+            if ($('chk-samecur').checked) { $('sel-pmt').value = lc(); }
+            updateUI(); if (!same()) fetchFX(); else compute();
+        }
 
         // ─── EVENT BINDINGS ───────────────────────────
         ['inp-principal', 'inp-rate', 'inp-date', 'fx-input', 'pmt-slider'].forEach(id => $(id).addEventListener('input', compute));
