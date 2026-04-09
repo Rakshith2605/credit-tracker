@@ -944,17 +944,17 @@
             </div>
             <div class="icell">
                 <label>Outstanding principal</label>
-                <input type="number" id="inp-principal" value="6146416" step="1000">
+                <input type="number" id="inp-principal" value="0" step="1000">
                 <span class="iunit" id="iunit-loan">INR</span>
             </div>
             <div class="icell">
                 <label>Annual interest rate</label>
-                <input type="number" id="inp-rate" value="12.40" step="0.05">
+                <input type="number" id="inp-rate" value="0" step="0.05">
                 <span class="iunit">% p.a.</span>
             </div>
             <div class="icell">
                 <label>Start date</label>
-                <input type="text" id="inp-date" value="Apr 2026">
+                <input type="text" id="inp-date" value="" placeholder="MMM YYYY">
                 <span class="iunit">MMM YYYY</span>
             </div>
         </div>
@@ -998,7 +998,7 @@
         <div class="srow fade" style="animation-delay:.1s">
             <span class="slbl2" id="srow-label">USD / month</span>
             <button class="pm-btn" onclick="adjustSlider(-100)" title="−100">−</button>
-            <input type="range" id="pmt-slider" min="0" max="10000" step="100" value="4500">
+            <input type="range" id="pmt-slider" min="0" max="10000" step="100" value="0">
             <button class="pm-btn" onclick="adjustSlider(+100)" title="+100">+</button>
             <span class="sval" id="slider-pmt">$4,500</span>
             <span class="sinr" id="slider-loan">≈ ₹4,14,000</span>
@@ -1083,7 +1083,7 @@
     </div>
 
     <footer>
-        <span id="footer-info">CREDIT TRACKER — AVANSE BANEE00745564</span>
+        <span id="footer-info">CREDIT TRACKER</span>
         <span id="footer-date">—</span>
     </footer>
 
@@ -1318,15 +1318,15 @@
             const mo = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
             const p = s.trim().toLowerCase().split(/[\s\/\-]+/);
             if (p.length >= 2) { const m = mo[p[0].slice(0, 3)], y = parseInt(p[1]); if (!isNaN(m) && !isNaN(y)) return new Date(y, m, 10); }
-            return new Date(2026, 3, 10);
+            const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 10);
         }
 
         // ─── COMPUTE ──────────────────────────────────
         function compute() {
-            const principal = parseFloat($('inp-principal').value) || 6146416;
-            const annualRate = parseFloat($('inp-rate').value) || 12.40;
+            const principal = parseFloat($('inp-principal').value) || 0;
+            const annualRate = parseFloat($('inp-rate').value) || 0;
             const fx = same() ? 1 : (parseFloat($('fx-input').value) || 1);
-            const pmtAmt = parseFloat($('pmt-slider').value) || 4500;
+            const pmtAmt = parseFloat($('pmt-slider').value) || 0;
             const startDate = parseDate($('inp-date').value);
             const loan = lc(), pmt = pc(), ls = CURRENCIES[loan].sym, ps = CURRENCIES[pmt].sym;
             const RATE = annualRate / 100 / 12, pmtLoan = pmtAmt * fx;
