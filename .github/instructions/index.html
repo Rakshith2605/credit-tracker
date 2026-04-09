@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Tracker</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <!-- STEP 1: Replace YOUR_GOOGLE_CLIENT_ID below with your OAuth Client ID from
+     https://console.cloud.google.com → APIs & Services → Credentials → Create OAuth 2.0 Client ID
+     Authorised JavaScript origins: https://<you>.github.io  (and http://localhost for testing) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --bg: #080808;
+            --surf: #101010;
+            --surf2: #161616;
+            --brd: #222;
+            --brd2: #2e2e2e;
+            --acc: #d4f04a;
+            --acc2: #7ee8a2;
+            --red: #ff5c5c;
+            --txt: #f0f0ee;
+            --mut: #555;
+            --mut2: #888;
+            --mono: 'DM Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --disp: 'Syne', sans-serif;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html {
+            font-size: 14px;
+            scroll-behavior: smooth
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--txt);
+            font-family: var(--sans);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased
+        }
+
+        header {
+            border-bottom: 1px solid var(--brd);
+            padding: 1.25rem 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            background: rgba(8, 8, 8, 0.93);
+            backdrop-filter: blur(12px);
+            z-index: 100
+        }
+
+        .logo {
+            font-family: var(--disp);
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em
+        }
+
+        .logo span {
+            color: var(--acc)
+        }
+
+        .hmeta {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--mut2);
+            text-align: right
+        }
+
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: .66rem;
+            color: var(--acc2);
+            background: rgba(126, 232, 162, 0.08);
+            border: 1px solid rgba(126, 232, 162, 0.2);
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: .05em
+        }
+
+        .ldot {
+            width: 6px;
+            height: 6px;
+            background: var(--acc2);
+            border-radius: 50%;
+            animation: pulse 2s infinite
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .4;
+                transform: scale(.8)
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2.5rem 4rem
+        }
+
+        .slabel {
+            font-family: var(--mono);
+            font-size: .63rem;
+            letter-spacing: .12em;
+            color: var(--mut);
+            text-transform: uppercase;
+            margin-bottom: .85rem;
+            border-left: 2px solid var(--acc);
+            padding-left: 10px
+        }
+
+        .igrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1px;
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1.75rem
+        }
+
+        .icell {
+            background: var(--surf);
+            padding: 1.1rem 1.4rem;
+            position: relative;
+            transition: background .15s
+        }
+
+        .icell:hover {
+            background: var(--surf2)
+        }
+
+        .icell label {
+            display: block;
+            font-family: var(--mono);
+            font-size: .62rem;
+            letter-spacing: .1em;
+            color: var(--mut2);
+            text-transform: uppercase;
+            margin-bottom: 7px
+        }
+
+        .icell input,
+        .icell select {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--brd2);
+            color: var(--txt);
+            font-family: var(--mono);
+            font-size: 1.15rem;
+            font-weight: 400;
+            padding: 4px 0;
+            outline: none;
+            transition: border-color .2s;
+            -webkit-appearance: none;
+            appearance: none
+        }
+
+        .icell select {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 2px center;
+            background-size: 10px;
+            padding-right: 18px
+        }
+
+        .icell select option {
+            background: #181818;
+            color: var(--txt)
+        }
+
+        .icell input:focus,
+        .icell select:focus {
+            border-color: var(--acc)
+        }
+
+        .iunit {
+            position: absolute;
+            right: 1.4rem;
+            bottom: 1.1rem;
+            font-family: var(--mono);
+            font-size: .68rem;
+            color: var(--mut)
+        }
+
+        .fxrow {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            background: var(--surf);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.75rem
+        }
+
+        .fxlbl {
+            font-family: var(--mono);
+            font-size: .63rem;
+            letter-spacing: .1em;
+            color: var(--mut2);
+            text-transform: uppercase;
+            white-space: nowrap
+        }
+
+        .cur-select {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--brd2);
+            color: var(--txt);
+            font-family: var(--mono);
+            font-size: .95rem;
+            padding: 2px 18px 2px 0;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 2px center;
+            background-size: 10px;
+            transition: border-color .2s
+        }
+
+        .cur-select option {
+            background: #181818;
+            color: var(--txt)
+        }
+
+        .cur-select:focus {
+            border-color: var(--acc)
+        }
+
+        #fx-pair {
+            font-family: var(--mono);
+            font-size: .78rem;
+            color: var(--acc);
+            letter-spacing: .05em;
+            min-width: 70px
+        }
+
+        #fx-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--brd2);
+            color: var(--acc);
+            font-family: var(--mono);
+            font-size: 1.35rem;
+            font-weight: 400;
+            width: 110px;
+            outline: none;
+            padding: 2px 0;
+            transition: border-color .2s
+        }
+
+        #fx-input:focus {
+            border-color: var(--acc)
+        }
+
+        .fxsfx {
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: var(--mut2)
+        }
+
+        .btnfetch {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: 1px solid var(--brd2);
+            color: var(--mut2);
+            font-family: var(--mono);
+            font-size: .7rem;
+            letter-spacing: .06em;
+            padding: 7px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all .2s
+        }
+
+        .btnfetch:hover {
+            border-color: var(--acc2);
+            color: var(--acc2)
+        }
+
+        #fx-status {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--mut)
+        }
+
+        .srow {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            margin-bottom: 2.25rem
+        }
+
+        .slbl2 {
+            font-family: var(--mono);
+            font-size: .63rem;
+            color: var(--mut2);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            white-space: nowrap
+        }
+
+        #pmt-slider {
+            -webkit-appearance: none;
+            flex: 1;
+            min-width: 160px;
+            height: 2px;
+            background: var(--brd2);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer
+        }
+
+        #pmt-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--acc);
+            border: 3px solid var(--bg);
+            box-shadow: 0 0 0 1px var(--acc);
+            transition: transform .15s
+        }
+
+        #pmt-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2)
+        }
+
+        .sval {
+            font-family: var(--mono);
+            font-size: 1.35rem;
+            font-weight: 500;
+            color: var(--acc);
+            min-width: 90px;
+            text-align: right
+        }
+
+        .sinr {
+            font-family: var(--mono);
+            font-size: .78rem;
+            color: var(--mut2);
+            white-space: nowrap
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+            gap: 1px;
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 2.25rem
+        }
+
+        .metric {
+            background: var(--surf);
+            padding: 1.1rem 1.4rem
+        }
+
+        .mlbl {
+            font-family: var(--mono);
+            font-size: .6rem;
+            letter-spacing: .1em;
+            color: var(--mut);
+            text-transform: uppercase;
+            margin-bottom: 5px
+        }
+
+        .mval {
+            font-family: var(--mono);
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: var(--txt)
+        }
+
+        .mval.acc {
+            color: var(--acc)
+        }
+
+        .mval.red {
+            color: var(--red)
+        }
+
+        .mval.grn {
+            color: var(--acc2)
+        }
+
+        .msub {
+            font-family: var(--mono);
+            font-size: .62rem;
+            color: var(--mut);
+            margin-top: 2px
+        }
+
+        .chwrap {
+            position: relative;
+            width: 100%;
+            background: var(--surf);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 1.4rem;
+            margin-bottom: 2.25rem
+        }
+
+        .chleg {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap
+        }
+
+        .legitem {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: .66rem;
+            color: var(--mut2)
+        }
+
+        .legdot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px
+        }
+
+        .chinner {
+            position: relative;
+            height: 240px
+        }
+
+        .thdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: .85rem;
+            flex-wrap: wrap;
+            gap: 8px
+        }
+
+        .tblwrap {
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 380px;
+            overflow-y: auto
+        }
+
+        .tblwrap::-webkit-scrollbar {
+            width: 3px
+        }
+
+        .tblwrap::-webkit-scrollbar-thumb {
+            background: var(--brd2);
+            border-radius: 2px
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: .76rem
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--surf2);
+            padding: 9px 13px;
+            text-align: right;
+            color: var(--mut2);
+            font-size: .6rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--brd);
+            white-space: nowrap;
+            font-weight: 400
+        }
+
+        thead th:first-child {
+            text-align: left
+        }
+
+        tbody td {
+            padding: 8px 13px;
+            text-align: right;
+            border-bottom: 1px solid var(--brd);
+            color: var(--mut2)
+        }
+
+        tbody td:first-child {
+            text-align: left;
+            color: var(--mut)
+        }
+
+        tbody tr:hover td {
+            color: var(--txt);
+            background: rgba(255, 255, 255, .02)
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none
+        }
+
+        .td-o {
+            color: var(--txt) !important
+        }
+
+        .td-p {
+            color: var(--acc2) !important
+        }
+
+        .td-n {
+            color: var(--red) !important
+        }
+
+        .td-cl {
+            color: var(--txt) !important
+        }
+
+        .td-done {
+            color: var(--acc) !important;
+            font-weight: 500
+        }
+
+        .btncv {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: 1px solid var(--acc);
+            color: var(--acc);
+            font-family: var(--mono);
+            font-size: .7rem;
+            letter-spacing: .08em;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all .2s
+        }
+
+        .btncv:hover {
+            background: var(--acc);
+            color: var(--bg)
+        }
+
+        /* +/- slider buttons */
+        .pm-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--brd2);
+            background: transparent;
+            color: var(--txt);
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .15s;
+            flex-shrink: 0
+        }
+
+        .pm-btn:hover {
+            border-color: var(--acc);
+            color: var(--acc)
+        }
+
+        .pm-btn:active {
+            transform: scale(.9);
+            background: rgba(212, 240, 74, .08)
+        }
+
+        footer {
+            border-top: 1px solid var(--brd);
+            padding: 1.25rem 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px
+        }
+
+        footer span {
+            font-family: var(--mono);
+            font-size: .63rem;
+            color: var(--mut)
+        }
+
+        .fade {
+            animation: fi .4s ease forwards;
+            opacity: 0
+        }
+
+        @keyframes fi {
+            to {
+                opacity: 1
+            }
+        }
+
+        @media(max-width:600px) {
+            header {
+                padding: 1rem 1.25rem
+            }
+
+            .container {
+                padding: 1.5rem 1.25rem 3rem
+            }
+
+            footer {
+                padding: 1rem 1.25rem
+            }
+
+            .igrid {
+                grid-template-columns: 1fr 1fr
+            }
+        }
+
+        /* ── AUTH ── */
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 4px 10px 4px 4px;
+            border: 1px solid var(--brd2);
+            border-radius: 20px;
+            transition: border-color .2s
+        }
+
+        .user-chip:hover {
+            border-color: var(--acc)
+        }
+
+        .user-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover
+        }
+
+        .user-avatar-init {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--acc);
+            color: var(--bg);
+            font-family: var(--mono);
+            font-size: .7rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .user-name {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--txt);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .signout-btn {
+            font-family: var(--mono);
+            font-size: .65rem;
+            color: var(--mut);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 0;
+            transition: color .2s
+        }
+
+        .signout-btn:hover {
+            color: var(--red)
+        }
+
+        #g-btn-wrap {
+            display: flex;
+            align-items: center
+        }
+
+        /* setup banner */
+        .setup-banner {
+            background: rgba(212, 240, 74, 0.06);
+            border: 1px solid rgba(212, 240, 74, 0.2);
+            border-radius: 8px;
+            padding: .85rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--acc);
+            line-height: 1.8;
+            display: none
+        }
+
+        .setup-banner code {
+            background: rgba(212, 240, 74, 0.12);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: .68rem
+        }
+
+        /* toast */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: var(--surf2);
+            border: 1px solid var(--brd2);
+            border-radius: 8px;
+            padding: .6rem 1rem;
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--acc2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity .25s, transform .25s;
+            pointer-events: none
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">CREDIT<span>.</span>TRACKER</div>
+        <div style="display:flex;align-items:center;gap:12px">
+            <div class="live-badge"><span class="ldot"></span>LIVE FX</div>
+            <div class="hmeta" id="last-updated">—</div>
+            <!-- Google sign-in button (shown when logged out) -->
+            <div id="g-btn-wrap"></div>
+            <!-- User chip (shown when logged in) -->
+            <div id="user-chip-wrap" style="display:none">
+                <div class="user-chip" title="Click to sign out" onclick="signOut()">
+                    <div id="user-avatar-el" class="user-avatar-init">?</div>
+                    <span class="user-name" id="user-name-el">—</span>
+                    <span class="signout-btn">✕</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
+            <path d="M2 8l4 4 8-8" />
+        </svg>
+        <span id="toast-msg">Preferences saved</span>
+    </div>
+
+    <div class="container">
+
+        <!-- shows only when GOOGLE_CLIENT_ID is still placeholder -->
+        <div class="setup-banner" id="setup-banner">
+            <strong>Google Login setup required</strong><br>
+            1. Go to <code>console.cloud.google.com</code> → APIs &amp; Services → Credentials<br>
+            2. Create an <strong>OAuth 2.0 Client ID</strong> (Web application)<br>
+            3. Add your GitHub Pages URL to <strong>Authorised JavaScript origins</strong><br>
+            4. Replace <code>YOUR_GOOGLE_CLIENT_ID</code> in this file's <code>&lt;script&gt;</code> block
+        </div>
+
+        <div class="slabel" style="margin-top:1rem">Loan parameters</div>
+        <div class="igrid fade">
+            <div class="icell">
+                <label>Loan currency</label>
+                <select id="sel-loan" onchange="onCurrencyChange()">
+                    <option value="INR" selected>INR — Indian Rupee</option>
+                    <option value="USD">USD — US Dollar</option>
+                    <option value="EUR">EUR — Euro</option>
+                    <option value="GBP">GBP — British Pound</option>
+                    <option value="JPY">JPY — Japanese Yen</option>
+                    <option value="AUD">AUD — Australian Dollar</option>
+                    <option value="CAD">CAD — Canadian Dollar</option>
+                    <option value="SGD">SGD — Singapore Dollar</option>
+                    <option value="AED">AED — UAE Dirham</option>
+                    <option value="CHF">CHF — Swiss Franc</option>
+                    <option value="CNY">CNY — Chinese Yuan</option>
+                    <option value="MXN">MXN — Mexican Peso</option>
+                    <option value="BRL">BRL — Brazilian Real</option>
+                    <option value="ZAR">ZAR — S.A. Rand</option>
+                    <option value="PHP">PHP — Philippine Peso</option>
+                    <option value="IDR">IDR — Indonesian Rupiah</option>
+                </select>
+            </div>
+            <div class="icell">
+                <label>Outstanding principal</label>
+                <input type="number" id="inp-principal" value="6146416" step="1000">
+                <span class="iunit" id="iunit-loan">INR</span>
+            </div>
+            <div class="icell">
+                <label>Annual interest rate</label>
+                <input type="number" id="inp-rate" value="12.40" step="0.05">
+                <span class="iunit">% p.a.</span>
+            </div>
+            <div class="icell">
+                <label>Start date</label>
+                <input type="text" id="inp-date" value="Apr 2026">
+                <span class="iunit">MMM YYYY</span>
+            </div>
+        </div>
+
+        <div class="slabel">Payment currency &amp; exchange rate</div>
+        <div class="fxrow fade" style="animation-delay:.05s">
+            <span class="fxlbl">Pay in</span>
+            <select id="sel-pmt" class="cur-select" onchange="onCurrencyChange()">
+                <option value="USD" selected>USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="INR">INR</option>
+                <option value="JPY">JPY</option>
+                <option value="AUD">AUD</option>
+                <option value="CAD">CAD</option>
+                <option value="SGD">SGD</option>
+                <option value="AED">AED</option>
+                <option value="CHF">CHF</option>
+                <option value="CNY">CNY</option>
+                <option value="MXN">MXN</option>
+                <option value="BRL">BRL</option>
+                <option value="ZAR">ZAR</option>
+                <option value="PHP">PHP</option>
+                <option value="IDR">IDR</option>
+            </select>
+            <span style="color:var(--mut);font-family:var(--mono);font-size:.8rem;margin:0 6px">→</span>
+            <span id="fx-pair"
+                style="font-family:var(--mono);font-size:.78rem;color:var(--acc);letter-spacing:.05em;min-width:70px">USD/INR</span>
+            <input type="number" id="fx-input" value="92.0000" step="0.0001">
+            <span class="fxsfx" id="fx-suffix">INR per 1 USD</span>
+            <span id="fx-status">manually set</span>
+            <button class="btnfetch" onclick="fetchFX(true)" id="btn-fetch" title="Force refresh — bypasses 24h cache">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
+                    <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5M13.5 2.5v3h-3" />
+                </svg>
+                FETCH LIVE
+            </button>
+        </div>
+
+        <div class="slabel">Monthly payment</div>
+        <div class="srow fade" style="animation-delay:.1s">
+            <span class="slbl2" id="srow-label">USD / month</span>
+            <button class="pm-btn" onclick="adjustSlider(-100)" title="−100">−</button>
+            <input type="range" id="pmt-slider" min="0" max="10000" step="100" value="4500">
+            <button class="pm-btn" onclick="adjustSlider(+100)" title="+100">+</button>
+            <span class="sval" id="slider-pmt">$4,500</span>
+            <span class="sinr" id="slider-loan">≈ ₹4,14,000</span>
+        </div>
+
+        <div class="metrics fade" style="animation-delay:.15s">
+            <div class="metric">
+                <div class="mlbl">Principal</div>
+                <div class="mval acc" id="m-principal">—</div>
+                <div class="msub">outstanding</div>
+            </div>
+            <div class="metric">
+                <div class="mlbl">Monthly interest</div>
+                <div class="mval red" id="m-int">—</div>
+                <div class="msub">at current balance</div>
+            </div>
+            <div class="metric">
+                <div class="mlbl">Payment (loan ccy)</div>
+                <div class="mval acc" id="m-pmt">—</div>
+                <div class="msub" id="m-pmt-sub">this month</div>
+            </div>
+            <div class="metric">
+                <div class="mlbl">Net principal / mo</div>
+                <div class="mval grn" id="m-net">—</div>
+                <div class="msub">pmt − interest</div>
+            </div>
+            <div class="metric">
+                <div class="mlbl">Payoff in</div>
+                <div class="mval acc" id="m-months">—</div>
+                <div class="msub" id="m-payoff-date">—</div>
+            </div>
+            <div class="metric">
+                <div class="mlbl">Total interest</div>
+                <div class="mval red" id="m-total-int">—</div>
+                <div class="msub">over loan life</div>
+            </div>
+        </div>
+
+        <div class="slabel">Projection chart</div>
+        <div class="chwrap fade" style="animation-delay:.2s">
+            <div class="chleg">
+                <div class="legitem"><span class="legdot"
+                        style="background:#1a7a52;border:2px solid #7ee8a2"></span>Principal remaining</div>
+                <div class="legitem"><span class="legdot" style="background:#ff5c5c"></span>Monthly interest (sub-bar)
+                </div>
+                <div class="legitem"><span class="legdot"
+                        style="background:transparent;border-top:2px dashed #d4f04a;border-radius:0;height:0;width:16px;margin-right:-4px"></span>&nbsp;Monthly
+                    payment</div>
+                <div class="legitem"><span class="legdot"
+                        style="background:rgba(212,240,74,.15);border:1px dashed #d4f04a"></span>Payoff</div>
+            </div>
+            <div class="chinner" style="height:260px"><canvas id="loanChart"></canvas></div>
+        </div>
+
+        <div class="thdr fade" style="animation-delay:.25s">
+            <div class="slabel" style="margin-bottom:0">Amortization schedule</div>
+            <button class="btncv" onclick="downloadCSV()">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
+                    <path d="M8 2v8M5 7l3 3 3-3M3 12h10" />
+                </svg>
+                EXPORT CSV
+            </button>
+        </div>
+        <div class="tblwrap fade" style="animation-delay:.3s">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align:left">#</th>
+                        <th>Date</th>
+                        <th id="th-open">Opening</th>
+                        <th id="th-pmt">Payment</th>
+                        <th id="th-int">Interest</th>
+                        <th id="th-ppaid">Principal paid</th>
+                        <th id="th-close">Closing</th>
+                        <th id="th-pmtcur">Pmt amt</th>
+                    </tr>
+                </thead>
+                <tbody id="tbl-body"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <footer>
+        <span id="footer-info">CREDIT TRACKER — AVANSE BANEE00745564</span>
+        <span id="footer-date">—</span>
+    </footer>
+
+    <script>
+        // ─────────────────────────────────────────────
+        // CONFIG — replace with your Google Client ID
+        // ─────────────────────────────────────────────
+        const GOOGLE_CLIENT_ID = '763053516579-36q0jsjukgdu1p8echsjdsac0185gi0i.apps.googleusercontent.com';
+        const FX_API_KEY = 'fc35c606ab6275d97e464be0';
+        const CACHE_KEY = 'loanproj_fx_cache';
+        const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+        // ─── CURRENCIES ───────────────────────────────
+        const CURRENCIES = {
+            INR: { sym: '₹', locale: 'en-IN', scale: 1e5, sl: 'L' },
+            USD: { sym: '$', locale: 'en-US', scale: 1e3, sl: 'K' },
+            EUR: { sym: '€', locale: 'de-DE', scale: 1e3, sl: 'K' },
+            GBP: { sym: '£', locale: 'en-GB', scale: 1e3, sl: 'K' },
+            JPY: { sym: '¥', locale: 'ja-JP', scale: 1e4, sl: '万' },
+            AUD: { sym: 'A$', locale: 'en-AU', scale: 1e3, sl: 'K' },
+            CAD: { sym: 'C$', locale: 'en-CA', scale: 1e3, sl: 'K' },
+            SGD: { sym: 'S$', locale: 'en-SG', scale: 1e3, sl: 'K' },
+            AED: { sym: 'AED', locale: 'ar-AE', scale: 1e3, sl: 'K' },
+            CHF: { sym: 'Fr', locale: 'de-CH', scale: 1e3, sl: 'K' },
+            CNY: { sym: '¥', locale: 'zh-CN', scale: 1e4, sl: '万' },
+            MXN: { sym: '$', locale: 'es-MX', scale: 1e3, sl: 'K' },
+            BRL: { sym: 'R$', locale: 'pt-BR', scale: 1e3, sl: 'K' },
+            ZAR: { sym: 'R', locale: 'en-ZA', scale: 1e3, sl: 'K' },
+            PHP: { sym: '₱', locale: 'en-PH', scale: 1e3, sl: 'K' },
+            IDR: { sym: 'Rp', locale: 'id-ID', scale: 1e6, sl: 'jt' },
+        };
+
+        let chartInst = null, projRows = [], currentUser = null;
+        const $ = id => document.getElementById(id);
+        const lc = () => $('sel-loan').value;
+        const pc = () => $('sel-pmt').value;
+        const same = () => lc() === pc();
+
+        // ─── COOKIE HELPERS ───────────────────────────
+        function setCookie(name, value, days = 365) {
+            const exp = new Date(Date.now() + days * 864e5).toUTCString();
+            document.cookie = `${name}=${encodeURIComponent(value)};expires=${exp};path=/;SameSite=Strict`;
+        }
+        function getCookie(name) {
+            const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+            return m ? decodeURIComponent(m[1]) : null;
+        }
+        function deleteCookie(name) {
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+
+        function prefKey() {
+            return currentUser ? `loanproj_prefs_${currentUser.sub}` : 'loanproj_prefs_guest';
+        }
+
+        function savePrefs() {
+            const prefs = {
+                loanCur: $('sel-loan').value,
+                pmtCur: $('sel-pmt').value,
+                principal: $('inp-principal').value,
+                rate: $('inp-rate').value,
+                date: $('inp-date').value,
+                fx: $('fx-input').value,
+                pmtAmt: $('pmt-slider').value,
+            };
+            setCookie(prefKey(), JSON.stringify(prefs), 365);
+            showToast(currentUser ? `Saved for ${currentUser.name.split(' ')[0]}` : 'Preferences saved');
+        }
+
+        function loadPrefs() {
+            const raw = getCookie(prefKey());
+            if (!raw) return false;
+            try {
+                const p = JSON.parse(raw);
+                if (p.loanCur) { $('sel-loan').value = p.loanCur; }
+                if (p.pmtCur) { $('sel-pmt').value = p.pmtCur; }
+                if (p.principal) { $('inp-principal').value = p.principal; }
+                if (p.rate) { $('inp-rate').value = p.rate; }
+                if (p.date) { $('inp-date').value = p.date; }
+                if (p.fx) { $('fx-input').value = p.fx; }
+                if (p.pmtAmt) { $('pmt-slider').value = p.pmtAmt; }
+                return true;
+            } catch { return false; }
+        }
+
+        // ─── TOAST ────────────────────────────────────
+        let toastTimer;
+        function showToast(msg = 'Preferences saved') {
+            const t = $('toast'); $('toast-msg').textContent = msg;
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        // ─── GOOGLE AUTH ──────────────────────────────
+        function initGoogleAuth() {
+            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+                $('setup-banner').style.display = 'block';
+                return;
+            }
+            if (typeof google === 'undefined') { setTimeout(initGoogleAuth, 300); return; }
+            google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleCredential,
+                auto_select: true,
+            });
+            google.accounts.id.renderButton($('g-btn-wrap'), {
+                theme: 'outline', size: 'medium', shape: 'pill', type: 'standard',
+            });
+            // restore session from cookie
+            const saved = getCookie('loanproj_user');
+            if (saved) {
+                try { currentUser = JSON.parse(saved); updateUserChip(); loadPrefs(); updateUI(); fetchFX(false); }
+                catch { }
+            }
+        }
+
+        function handleCredential(resp) {
+            try {
+                const payload = JSON.parse(atob(resp.credential.split('.')[1]));
+                currentUser = { name: payload.name, email: payload.email, picture: payload.picture || '', sub: payload.sub };
+                setCookie('loanproj_user', JSON.stringify(currentUser), 30);
+                updateUserChip();
+                const hadPrefs = loadPrefs();
+                updateUI();
+                if (!same()) fetchFX(false); else compute();
+                showToast(hadPrefs ? `Welcome back, ${currentUser.name.split(' ')[0]}!` : `Signed in as ${currentUser.name.split(' ')[0]}`);
+            } catch (e) { console.error('Auth error', e); }
+        }
+
+        function signOut() {
+            if (typeof google !== 'undefined') google.accounts.id.disableAutoSelect();
+            deleteCookie('loanproj_user');
+            currentUser = null;
+            updateUserChip();
+            showToast('Signed out');
+        }
+
+        function updateUserChip() {
+            const loggedIn = !!currentUser;
+            $('g-btn-wrap').style.display = loggedIn ? 'none' : 'flex';
+            $('user-chip-wrap').style.display = loggedIn ? 'flex' : 'none';
+            if (!loggedIn) return;
+            $('user-name-el').textContent = currentUser.name;
+            const av = $('user-avatar-el');
+            if (currentUser.picture) {
+                av.outerHTML = `<img id="user-avatar-el" class="user-avatar" src="${currentUser.picture}" referrerpolicy="no-referrer" alt="">`;
+            } else {
+                av.textContent = currentUser.name.slice(0, 2).toUpperCase();
+            }
+        }
+
+        // ─── FX CACHE ─────────────────────────────────
+        function loadFxCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || {}; } catch { return {}; } }
+        function saveFxCache(c) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch { } }
+        function getCachedRate(b, t) { const e = loadFxCache()[b]; if (!e || Date.now() - e.ts > CACHE_TTL) return null; return e.rates?.[t] ?? null; }
+
+        async function fetchRatesForBase(base) {
+            const res = await fetch(`https://v6.exchangerate-api.com/v6/${FX_API_KEY}/latest/${base}`);
+            const data = await res.json();
+            if (data.result !== 'success') throw new Error(data['error-type'] || 'API error');
+            const c = loadFxCache(); c[base] = { ts: Date.now(), rates: data.conversion_rates }; saveFxCache(c);
+            return data.conversion_rates;
+        }
+
+        async function fetchFX(force = false) {
+            if (same()) return;
+            const loan = lc(), pmt = pc();
+            $('btn-fetch').style.opacity = '.4';
+            if (!force) {
+                const cached = getCachedRate(pmt, loan);
+                if (cached) {
+                    $('fx-input').value = cached.toFixed(4);
+                    const age = Math.round((Date.now() - loadFxCache()[pmt].ts) / 60000);
+                    $('fx-status').textContent = `cached · ${age}m ago`;
+                    $('last-updated').textContent = `${pmt}/${loan} ${cached.toFixed(4)} (cached)`;
+                    $('btn-fetch').style.opacity = '1';
+                    compute(); return;
+                }
+            }
+            $('fx-status').textContent = 'fetching…';
+            try {
+                const rates = await fetchRatesForBase(pmt);
+                const rate = rates[loan];
+                if (rate) {
+                    $('fx-input').value = rate.toFixed(4);
+                    const ts = new Date().toLocaleTimeString();
+                    $('fx-status').textContent = `live · ${ts}`;
+                    $('last-updated').textContent = `${pmt}/${loan} ${rate.toFixed(4)} · ${ts}`;
+                } else { $('fx-status').textContent = 'pair not found — edit manually'; }
+            } catch (e) { $('fx-status').textContent = `error: ${e.message}`; }
+            $('btn-fetch').style.opacity = '1';
+            compute();
+        }
+
+        // ─── CURRENCY UI ──────────────────────────────
+        function updateUI() {
+            const loan = lc(), pmt = pc(), ls = CURRENCIES[loan].sym, ps = CURRENCIES[pmt].sym, isSame = same();
+            $('fx-pair').textContent = isSame ? `${loan} = ${pmt}` : `${pmt} / ${loan}`;
+            $('fx-suffix').textContent = isSame ? 'same currency, rate = 1' : `${loan} per 1 ${pmt}`;
+            $('btn-fetch').style.opacity = isSame ? '.3' : '1';
+            $('btn-fetch').style.pointerEvents = isSame ? 'none' : 'auto';
+            if (isSame) { $('fx-input').value = '1.0000'; $('fx-status').textContent = 'same currency'; }
+            $('srow-label').textContent = `${pmt} / month`;
+            $('iunit-loan').textContent = loan;
+            $('th-open').textContent = `Opening (${ls})`;
+            $('th-pmt').textContent = `Payment (${ls})`;
+            $('th-int').textContent = `Interest (${ls})`;
+            $('th-ppaid').textContent = `Principal (${ls})`;
+            $('th-close').textContent = `Closing (${ls})`;
+            $('th-pmtcur').textContent = isSame ? '—' : `Amt (${ps})`;
+            $('footer-info').textContent = `CREDIT TRACKER · ${loan} PRINCIPAL · ${pmt} PAYMENTS`;
+        }
+
+        // ─── FORMATTING ───────────────────────────────
+        function fmtL(n) {
+            const c = CURRENCIES[lc()];
+            if (lc() === 'INR') { if (Math.abs(n) >= 1e7) return `₹${(n / 1e7).toFixed(2)}Cr`; if (Math.abs(n) >= 1e5) return `₹${(n / 1e5).toFixed(2)}L`; return `₹${Math.round(n).toLocaleString('en-IN')}`; }
+            if (Math.abs(n) >= 1e9) return `${c.sym}${(n / 1e9).toFixed(2)}B`; if (Math.abs(n) >= 1e6) return `${c.sym}${(n / 1e6).toFixed(2)}M`; if (Math.abs(n) >= 1e3) return `${c.sym}${(n / 1e3).toFixed(1)}K`; return `${c.sym}${n.toFixed(lc() === 'JPY' ? 0 : 2)}`;
+        }
+        function fmtP(n) { const c = CURRENCIES[pc()]; if (Math.abs(n) >= 1e6) return `${c.sym}${(n / 1e6).toFixed(2)}M`; if (Math.abs(n) >= 1e3) return `${c.sym}${(n / 1e3).toFixed(1)}K`; return `${c.sym}${n.toFixed(pc() === 'JPY' ? 0 : 2)}`; }
+        function fmtR(n) { return Math.round(n).toLocaleString(CURRENCIES[lc()].locale); }
+        function chartSc(p) { if (lc() === 'INR') return { d: 1e5, l: '₹L' }; const c = CURRENCIES[lc()]; if (p >= 1e9) return { d: 1e9, l: c.sym + 'B' }; if (p >= 1e6) return { d: 1e6, l: c.sym + 'M' }; return { d: c.scale, l: c.sym + c.sl }; }
+
+        function parseDate(s) {
+            const mo = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+            const p = s.trim().toLowerCase().split(/[\s\/\-]+/);
+            if (p.length >= 2) { const m = mo[p[0].slice(0, 3)], y = parseInt(p[1]); if (!isNaN(m) && !isNaN(y)) return new Date(y, m, 10); }
+            return new Date(2026, 3, 10);
+        }
+
+        // ─── COMPUTE ──────────────────────────────────
+        function compute() {
+            const principal = parseFloat($('inp-principal').value) || 6146416;
+            const annualRate = parseFloat($('inp-rate').value) || 12.40;
+            const fx = same() ? 1 : (parseFloat($('fx-input').value) || 1);
+            const pmtAmt = parseFloat($('pmt-slider').value) || 4500;
+            const startDate = parseDate($('inp-date').value);
+            const loan = lc(), pmt = pc(), ls = CURRENCIES[loan].sym, ps = CURRENCIES[pmt].sym;
+            const RATE = annualRate / 100 / 12, pmtLoan = pmtAmt * fx;
+
+            // dynamic slider max = full principal in payment currency
+            const sliderMax = Math.max(Math.ceil(principal / fx), pmtAmt);
+            $('pmt-slider').max = sliderMax;
+
+            $('slider-pmt').textContent = `${ps}${pmtAmt.toLocaleString()}`;
+            $('slider-loan').textContent = same() ? '' : `≈ ${fmtL(pmtLoan)}`;
+
+            const fi = principal * RATE, fn = pmtLoan - fi;
+            $('m-principal').textContent = fmtL(principal);
+            $('m-int').textContent = fmtL(fi);
+            $('m-pmt').textContent = fmtL(pmtLoan);
+            $('m-pmt-sub').textContent = same() ? `${ps}/mo` : `${ps}${pmtAmt.toLocaleString()} × ${fx}`;
+            $('m-net').textContent = (fn >= 0 ? '' : '-') + fmtL(Math.abs(fn));
+            $('m-net').className = 'mval ' + (fn >= 0 ? 'grn' : 'red');
+
+            let p = principal; projRows = []; let d = new Date(startDate);
+            for (let i = 1; i <= 360 && p > 0.01; i++) {
+                const int = p * RATE, ppaid = pmtLoan - int, cl = Math.max(0, p - ppaid);
+                projRows.push({ i, date: d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }), open: p, pmt: pmtLoan, int, ppaid, cl, pmtAmt, fx });
+                if (cl === 0) break; p = cl; d = new Date(d.getFullYear(), d.getMonth() + 1, 10);
+            }
+
+            const mo = projRows.length, ti = projRows.reduce((s, r) => s + r.int, 0);
+            $('m-months').textContent = mo < 360 ? `${mo} mo` : '>30 yrs';
+            $('m-payoff-date').textContent = mo < 360 ? projRows[mo - 1].date : 'loan grows—raise payment';
+            $('m-total-int').textContent = fmtL(ti);
+
+            $('tbl-body').innerHTML = projRows.map(r => {
+                const last = r.cl < 0.01;
+                return `<tr><td>${r.i}</td><td style="color:var(--mut)">${r.date}</td><td class="td-o">${ls}${fmtR(r.open)}</td><td>${ls}${fmtR(r.pmt)}</td><td class="td-n">${ls}${fmtR(r.int)}</td><td class="${r.ppaid >= 0 ? 'td-p' : 'td-n'}">${r.ppaid >= 0 ? '' : '-'}${ls}${fmtR(Math.abs(r.ppaid))}</td><td class="${last ? 'td-done' : 'td-cl'}">${last ? 'PAID OFF' : ls + fmtR(r.cl)}</td><td style="color:var(--mut)">${loan === pmt ? '—' : ps + r.pmtAmt.toLocaleString()}</td></tr>`;
+            }).join('');
+
+            renderChart(principal);
+            savePrefs();
+        }
+
+        function renderChart(principal) {
+            try { _renderChart(principal); }
+            catch (e) {
+                console.error('Chart error:', e);
+                const c = $('loanChart');
+                if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = '#ff5c5c'; ctx.font = '12px DM Mono'; ctx.fillText('Chart error: ' + e.message, 10, 30); }
+            }
+        }
+
+        function _renderChart(principal) {
+            const sc = chartSc(principal);
+            const labels = projRows.map(r => r.date);
+            // stacked bars on left axis: interest (bottom, tiny red) + remaining principal (top, bold green)
+            // total height = int + cl ≈ opening principal → naturally decreasing
+            const intData = projRows.map(r => +(r.int / sc.d).toFixed(3));
+            const remData = projRows.map(r => +(r.cl / sc.d).toFixed(3));
+            // payment line on right axis (flat reference)
+            const pmtData = projRows.map(r => +(r.pmt / sc.d).toFixed(3));
+            const payoffIdx = projRows.length - 1;
+
+            const payoffPlugin = {
+                id: 'payoffLine',
+                afterDraw(chart) {
+                    const { ctx, scales: { x, y } } = chart;
+                    if (!x || projRows.length < 2) return;
+                    const xPos = x.getPixelForValue(payoffIdx);
+                    const top = y.top, bot = y.bottom;
+                    ctx.save();
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeStyle = 'rgba(212,240,74,0.45)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(xPos, top); ctx.lineTo(xPos, bot); ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.font = '500 10px DM Mono, monospace';
+                    const tw = ctx.measureText('PAID OFF').width;
+                    const bx = Math.min(xPos - tw / 2 - 6, chart.width - tw - 16);
+                    // roundRect polyfill
+                    ctx.fillStyle = 'rgba(212,240,74,0.13)';
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(bx, top + 6, tw + 12, 22, 4);
+                    } else {
+                        ctx.rect(bx, top + 6, tw + 12, 22);
+                    }
+                    ctx.fill();
+                    ctx.fillStyle = '#d4f04a';
+                    ctx.fillText('PAID OFF', bx + 6, top + 21);
+                    ctx.restore();
+                }
+            };
+
+            if (chartInst) chartInst.destroy();
+
+            chartInst = new Chart($('loanChart'), {
+                type: 'bar',
+                plugins: [payoffPlugin],
+                data: {
+                    labels,
+                    datasets: [
+                        // ① interest sub-bar — tiny red at bottom of each bar
+                        {
+                            type: 'bar',
+                            label: 'Monthly interest',
+                            data: intData,
+                            backgroundColor: '#ff5c5c',
+                            hoverBackgroundColor: '#ff8080',
+                            stack: 'bal',
+                            yAxisID: 'y',
+                            order: 2,
+                            borderSkipped: 'bottom',
+                            borderRadius: 0,
+                        },
+                        // ② remaining principal — bold tall block on top, decreasing
+                        {
+                            type: 'bar',
+                            label: 'Principal remaining',
+                            data: remData,
+                            backgroundColor: '#1a7a52',
+                            hoverBackgroundColor: '#21966400',
+                            borderColor: '#7ee8a2',
+                            borderWidth: { top: 2, left: 1, right: 1, bottom: 0 },
+                            stack: 'bal',
+                            yAxisID: 'y',
+                            order: 2,
+                            borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+                            borderSkipped: 'bottom',
+                        },
+                        // ③ monthly payment — flat accent line (right axis)
+                        {
+                            type: 'line',
+                            label: 'Monthly payment',
+                            data: pmtData,
+                            borderColor: '#d4f04a',
+                            borderWidth: 2,
+                            borderDash: [6, 3],
+                            segment: { borderDash: () => [6, 3] },
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#d4f04a',
+                            tension: 0,
+                            fill: false,
+                            yAxisID: 'y1',
+                            order: 0,
+                        },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 350, easing: 'easeInOutQuart' },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0e0e0e',
+                            borderColor: '#2e2e2e',
+                            borderWidth: 1,
+                            titleColor: '#888',
+                            bodyColor: '#f0f0ee',
+                            padding: 12,
+                            titleFont: { family: 'DM Mono', size: 11 },
+                            bodyFont: { family: 'DM Mono', size: 11 },
+                            callbacks: {
+                                title: items => items[0]?.label || '',
+                                label: c => {
+                                    const v = c.parsed.y?.toFixed(2);
+                                    const map = {
+                                        'Principal remaining': `  Balance:   ${sc.l}${v}`,
+                                        'Monthly interest': `  Interest:  ${sc.l}${v}`,
+                                        'Monthly payment': `  Payment:   ${sc.l}${v}`,
+                                    };
+                                    return map[c.dataset.label] ?? `  ${c.dataset.label}: ${sc.l}${v}`;
+                                },
+                                afterBody: items => {
+                                    const i = items[0]?.dataIndex;
+                                    if (i == null) return;
+                                    const r = projRows[i];
+                                    const eff = ((r.ppaid / r.open) * 100).toFixed(1);
+                                    const saved = +(r.int / sc.d).toFixed(2);
+                                    return [`  ─────────────────────`, `  ${eff}% of balance cleared`];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { autoSkip: true, maxTicksLimit: 10, color: '#444', font: { family: 'DM Mono', size: 10 } },
+                            grid: { display: false },
+                            border: { color: '#222' },
+                        },
+                        y: {
+                            stacked: true,
+                            position: 'left',
+                            ticks: { color: '#555', font: { family: 'DM Mono', size: 10 }, callback: v => `${sc.l}${v}` },
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            border: { color: '#222' },
+                            title: { display: true, text: 'balance', color: '#333', font: { family: 'DM Mono', size: 9 } },
+                        },
+                        y1: {
+                            position: 'right',
+                            min: 0,
+                            ticks: { color: '#555', font: { family: 'DM Mono', size: 10 }, callback: v => `${sc.l}${v}` },
+                            grid: { display: false },
+                            border: { color: '#222' },
+                            title: { display: true, text: 'payment/mo', color: '#333', font: { family: 'DM Mono', size: 9 } },
+                        }
+                    }
+                }
+            });
+        }
+        // ─── CSV ──────────────────────────────────────
+        function downloadCSV() {
+            const loan = lc(), pmt = pc(), fx = same() ? 1 : (parseFloat($('fx-input').value) || 1), rate = $('inp-rate').value;
+            const hdr = `Month,Date,Opening (${loan}),Payment (${loan}),Interest (${loan}),Principal Paid (${loan}),Closing (${loan}),${pmt} Amount,${pmt}/${loan} Rate,Annual Rate (%)\n`;
+            const body = projRows.map(r => `${r.i},${r.date},${Math.round(r.open)},${Math.round(r.pmt)},${Math.round(r.int)},${Math.round(r.ppaid)},${Math.round(r.cl)},${r.pmtAmt},${r.fx.toFixed(4)},${rate}`).join('\n');
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([hdr + body], { type: 'text/csv' })); a.download = `loan_${loan}_${pmt}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+        }
+
+        // ─── SLIDER +/- ───────────────────────────────
+        function adjustSlider(delta) {
+            const s = $('pmt-slider');
+            const newVal = Math.max(0, Math.min(+s.value + delta, +s.max));
+            s.value = newVal;
+            compute();
+        }
+
+        // ─── CURRENCY CHANGE ──────────────────────────
+        function onCurrencyChange() { updateUI(); if (!same()) fetchFX(); else compute(); }
+
+        // ─── EVENT BINDINGS ───────────────────────────
+        ['inp-principal', 'inp-rate', 'inp-date', 'fx-input', 'pmt-slider'].forEach(id => $(id).addEventListener('input', compute));
+
+        // ─── INIT ─────────────────────────────────────
+        $('footer-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+        // load guest prefs first (overridden by user prefs after sign-in)
+        const hadGuestPrefs = loadPrefs();
+        updateUI();
+
+        (async () => {
+            if (!same()) await fetchFX(false); else compute();
+        })();
+
+        // init Google Auth after DOM ready
+        setTimeout(initGoogleAuth, 100);
+    </script>
+</body>
+
+</html>
