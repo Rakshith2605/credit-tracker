@@ -1124,7 +1124,7 @@
 
         // ─── LOCAL STORAGE PREFS ──────────────────────
         function prefKey() {
-            return currentUser ? `loanproj_prefs_${currentUser.sub}` : 'loanproj_prefs_guest';
+            return currentUser ? `loanproj_prefs_v2_${currentUser.sub}` : 'loanproj_prefs_v2_guest';
         }
 
         function savePrefs() {
