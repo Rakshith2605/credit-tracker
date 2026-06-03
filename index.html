@@ -1190,6 +1190,8 @@
                 date: $('inp-date').value,
                 fx: $('fx-input').value,
                 pmtAmt: $('pmt-slider').value,
+                curMonth: $('chk-curmo').checked,
+                sameCur: $('chk-samecur').checked,
             };
             try { localStorage.setItem(prefKey(), JSON.stringify(prefs)); } catch {}
         }
@@ -1203,7 +1205,18 @@
                 if (p.pmtCur) { $('sel-pmt').value = p.pmtCur; }
                 if (p.principal) { $('inp-principal').value = p.principal; }
                 if (p.rate) { $('inp-rate').value = p.rate; }
-                if (p.date) { $('inp-date').value = p.date; }
+                if (p.curMonth) {
+                    $('chk-curmo').checked = true;
+                    $('inp-date').value = curMonthStr();
+                    $('inp-date').disabled = true;
+                } else if (p.date) {
+                    $('inp-date').value = p.date;
+                }
+                if (p.sameCur) {
+                    $('chk-samecur').checked = true;
+                    $('sel-pmt').value = lc();
+                    $('sel-pmt').disabled = true;
+                }
                 if (p.fx) { $('fx-input').value = p.fx; }
                 if (p.pmtAmt) { $('pmt-slider').value = p.pmtAmt; }
                 return true;
@@ -1264,15 +1277,15 @@
         }
 
         function resetFields() {
-            $('chk-curmo').checked = false;
+            $('chk-curmo').checked = true;
             $('chk-samecur').checked = false;
             $('sel-loan').value = 'INR';
             $('sel-pmt').value = 'USD';
             $('sel-pmt').disabled = false;
             $('inp-principal').value = '0';
             $('inp-rate').value = '0';
-            $('inp-date').value = '';
-            $('inp-date').disabled = false;
+            $('inp-date').value = curMonthStr();
+            $('inp-date').disabled = true;
             $('fx-input').value = '1.0000';
             $('pmt-slider').value = '0';
         }
@@ -1418,6 +1431,9 @@
 
         // ─── COMPUTE ──────────────────────────────────
         function compute() {
+            if ($('chk-curmo').checked) {
+                $('inp-date').value = curMonthStr();
+            }
             const principal = parseFloat($('inp-principal').value) || 0;
             const annualRate = parseFloat($('inp-rate').value) || 0;
             const fx = same() ? 1 : (parseFloat($('fx-input').value) || 1);
