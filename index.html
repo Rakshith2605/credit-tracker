@@ -671,6 +671,134 @@
             color: var(--mut)
         }
 
+        .row-act {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity .15s
+        }
+
+        tbody tr:hover .row-act {
+            opacity: 1
+        }
+
+        .rbtn {
+            background: none;
+            border: none;
+            color: var(--mut);
+            cursor: pointer;
+            font-size: .7rem;
+            padding: 1px 4px;
+            font-family: var(--mono);
+            transition: color .15s;
+            line-height: 1
+        }
+
+        .rbtn:hover {
+            color: var(--acc)
+        }
+
+        .rbtn.rst:hover {
+            color: var(--red)
+        }
+
+        .custom-tag {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: .5rem;
+            letter-spacing: .06em;
+            color: var(--acc2);
+            background: rgba(126, 232, 162, 0.1);
+            border: 1px solid rgba(126, 232, 162, 0.25);
+            padding: 1px 5px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            margin-right: 2px;
+            vertical-align: middle
+        }
+
+        .edit-inp {
+            width: 72px;
+            background: var(--bg);
+            border: 1px solid var(--acc);
+            color: var(--txt);
+            font-family: var(--mono);
+            font-size: .73rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            outline: none;
+            text-align: right
+        }
+
+        .ebtn {
+            background: none;
+            border: 1px solid var(--brd2);
+            color: var(--txt);
+            font-family: var(--mono);
+            font-size: .6rem;
+            padding: 2px 7px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all .15s;
+            margin-left: 2px
+        }
+
+        .ebtn.esave:hover {
+            border-color: var(--acc2);
+            color: var(--acc2)
+        }
+
+        .ebtn.ecancel:hover {
+            border-color: var(--red);
+            color: var(--red)
+        }
+
+        tr.row-custom td:first-child {
+            position: relative
+        }
+
+        tr.row-custom td:first-child::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--acc2);
+            border-radius: 1px
+        }
+
+        tr.row-editing {
+            background: rgba(212, 240, 74, 0.03) !important
+        }
+
+        tr.row-editing td {
+            color: var(--txt) !important
+        }
+
+        .bulk-reset-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
+            border: 1px solid var(--brd2);
+            color: var(--mut);
+            font-family: var(--mono);
+            font-size: .65rem;
+            letter-spacing: .06em;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all .2s;
+            margin-left: 8px
+        }
+
+        .bulk-reset-btn:hover {
+            border-color: var(--red);
+            color: var(--red)
+        }
+
         .fade {
             animation: fi .4s ease forwards;
             opacity: 0
@@ -1126,7 +1254,7 @@
                         <th id="th-int">Interest</th>
                         <th id="th-ppaid">Principal paid</th>
                         <th id="th-close">Closing</th>
-                        <th id="th-pmtcur">Pmt amt</th>
+                        <th id="th-pmtcur">Pmt amt ✎</th>
                     </tr>
                 </thead>
                 <tbody id="tbl-body"></tbody>
@@ -1169,7 +1297,7 @@
             IDR: { sym: 'Rp', locale: 'id-ID', scale: 1e6, sl: 'jt' },
         };
 
-        let chartInst = null, projRows = [], currentUser = null;
+        let chartInst = null, projRows = [], customPmts = {}, editingRow = null, currentUser = null;
         const $ = id => document.getElementById(id);
         const lc = () => $('sel-loan').value;
         const pc = () => $('sel-pmt').value;
@@ -1192,6 +1320,7 @@
                 pmtAmt: $('pmt-slider').value,
                 curMonth: $('chk-curmo').checked,
                 sameCur: $('chk-samecur').checked,
+                customPmts: customPmts,
             };
             try { localStorage.setItem(prefKey(), JSON.stringify(prefs)); } catch {}
         }
@@ -1219,6 +1348,7 @@
                 }
                 if (p.fx) { $('fx-input').value = p.fx; }
                 if (p.pmtAmt) { $('pmt-slider').value = p.pmtAmt; }
+                if (p.customPmts && Object.keys(p.customPmts).length > 0) { customPmts = p.customPmts; }
                 return true;
             } catch { return false; }
         }
@@ -1288,6 +1418,8 @@
             $('inp-date').disabled = true;
             $('fx-input').value = '1.0000';
             $('pmt-slider').value = '0';
+            customPmts = {};
+            editingRow = null;
         }
 
         function handleCredential(resp) {
@@ -1408,7 +1540,7 @@
             $('th-int').textContent = `Interest (${ls})`;
             $('th-ppaid').textContent = `Principal (${ls})`;
             $('th-close').textContent = `Closing (${ls})`;
-            $('th-pmtcur').textContent = isSame ? '—' : `Amt (${ps})`;
+            $('th-pmtcur').textContent = isSame ? `Amount (${ps}) ✎` : `Amt (${ps}) ✎`;
             $('footer-info').textContent = `CREDIT TRACKER · ${loan} PRINCIPAL · ${pmt} PAYMENTS`;
         }
 
@@ -1459,8 +1591,12 @@
 
             let p = principal; projRows = []; let d = new Date(startDate);
             for (let i = 1; i <= 360 && p > 0.01; i++) {
-                const int = p * RATE, ppaid = pmtLoan - int, cl = Math.max(0, p - ppaid);
-                projRows.push({ i, date: d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }), open: p, pmt: pmtLoan, int, ppaid, cl, pmtAmt, fx });
+                const ce = customPmts[i];
+                const usePmtAmt = ce ? ce.amt : pmtAmt;
+                const useFx = ce ? ce.fx : fx;
+                const usePmtLoan = usePmtAmt * useFx;
+                const int = p * RATE, ppaid = usePmtLoan - int, cl = Math.max(0, p - ppaid);
+                projRows.push({ i, date: d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }), open: p, pmt: usePmtLoan, int, ppaid, cl, pmtAmt: usePmtAmt, fx: useFx, custom: !!ce });
                 if (cl === 0) break; p = cl; d = new Date(d.getFullYear(), d.getMonth() + 1, 10);
             }
 
@@ -1469,13 +1605,69 @@
             $('m-payoff-date').textContent = mo < 360 ? projRows[mo - 1].date : 'loan grows—raise payment';
             $('m-total-int').textContent = fmtL(ti);
 
-            $('tbl-body').innerHTML = projRows.map(r => {
-                const last = r.cl < 0.01;
-                return `<tr><td>${r.i}</td><td style="color:var(--mut)">${r.date}</td><td class="td-o">${ls}${fmtR(r.open)}</td><td>${ls}${fmtR(r.pmt)}</td><td class="td-n">${ls}${fmtR(r.int)}</td><td class="${r.ppaid >= 0 ? 'td-p' : 'td-n'}">${r.ppaid >= 0 ? '' : '-'}${ls}${fmtR(Math.abs(r.ppaid))}</td><td class="${last ? 'td-done' : 'td-cl'}">${last ? 'PAID OFF' : ls + fmtR(r.cl)}</td><td style="color:var(--mut)">${loan === pmt ? '—' : ps + r.pmtAmt.toLocaleString()}</td></tr>`;
-            }).join('');
-
+            renderTable();
             renderChart(principal);
             savePrefs();
+        }
+
+        function renderTable() {
+            const loan = lc(), pmt = pc(), ls = CURRENCIES[loan].sym, ps = CURRENCIES[pmt].sym, isSame = same();
+            $('tbl-body').innerHTML = projRows.map(r => {
+                const last = r.cl < 0.01;
+                const isEdit = editingRow === r.i;
+                const isCustom = r.custom;
+                let pmtCell;
+                if (isEdit) {
+                    const editVal = isSame ? Math.round(r.pmt) : r.pmtAmt;
+                    pmtCell = `<td style="color:var(--mut)">${isCustom ? '<span class="custom-tag">actual</span>' : ''}<input class="edit-inp" id="edit-inp-${r.i}" type="number" value="${editVal}" step="${pmt === 'JPY' ? 1000 : '100'}"><button class="ebtn esave" onclick="saveRow(${r.i})">&#10003;</button><button class="ebtn ecancel" onclick="cancelEdit()">&#10005;</button></td>`;
+                } else {
+                    const amtDisplay = isSame ? `${ls}${fmtR(r.pmt)}` : `${ps}${r.pmtAmt.toLocaleString()}`;
+                    pmtCell = `<td style="color:var(--mut)">${r.custom ? '<span class="custom-tag">actual</span>' : ''}${amtDisplay}<span class="row-act"><button class="rbtn" onclick="editRow(${r.i})" title="Edit amount">&#9998;</button>${r.custom ? `<button class="rbtn rst" onclick="resetRow(${r.i})" title="Reset to projected">&#8634;</button>` : ''}</span></td>`;
+                }
+                const rowClass = isCustom ? 'row-custom' : '';
+                return `<tr data-row="${r.i}" class="${rowClass}"><td>${r.i}</td><td style="color:var(--mut)">${r.date}</td><td class="td-o">${ls}${fmtR(r.open)}</td><td>${ls}${fmtR(r.pmt)}</td><td class="td-n">${ls}${fmtR(r.int)}</td><td class="${r.ppaid >= 0 ? 'td-p' : 'td-n'}">${r.ppaid >= 0 ? '' : '-'}${ls}${fmtR(Math.abs(r.ppaid))}</td><td class="${last ? 'td-done' : 'td-cl'}">${last ? 'PAID OFF' : ls + fmtR(r.cl)}</td>${pmtCell}</tr>`;
+            }).join('');
+            if (editingRow) {
+                const inp = $(`edit-inp-${editingRow}`);
+                if (inp) { inp.focus(); inp.select(); inp.onkeydown = e => { if (e.key === 'Enter') saveRow(editingRow); if (e.key === 'Escape') cancelEdit(); }; }
+            }
+            const hasCustom = Object.keys(customPmts).length > 0;
+            const existingBtn = document.querySelector('.bulk-reset-btn');
+            if (hasCustom && !existingBtn) {
+                const btn = document.createElement('button');
+                btn.className = 'bulk-reset-btn';
+                btn.innerHTML = '&#8634; Reset all overrides';
+                btn.onclick = () => { customPmts = {}; compute(); };
+                document.querySelector('.thdr').appendChild(btn);
+            } else if (!hasCustom && existingBtn) {
+                existingBtn.remove();
+            }
+        }
+
+        function editRow(i) {
+            editingRow = i;
+            renderTable();
+        }
+
+        function cancelEdit() {
+            editingRow = null;
+            renderTable();
+        }
+
+        function saveRow(i) {
+            const inp = $(`edit-inp-${i}`);
+            if (!inp) return;
+            const val = parseFloat(inp.value);
+            if (isNaN(val) || val < 0) return;
+            const fx = same() ? 1 : (parseFloat($('fx-input').value) || 1);
+            customPmts[i] = { amt: val, fx: fx };
+            editingRow = null;
+            compute();
+        }
+
+        function resetRow(i) {
+            delete customPmts[i];
+            compute();
         }
 
         function renderChart(principal) {
@@ -1668,6 +1860,8 @@
         // ─── CURRENCY CHANGE ──────────────────────────
         function onCurrencyChange() {
             if ($('chk-samecur').checked) { $('sel-pmt').value = lc(); }
+            customPmts = {};
+            editingRow = null;
             updateUI(); if (!same()) fetchFX(); else compute();
         }
 
